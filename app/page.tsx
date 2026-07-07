@@ -108,19 +108,34 @@ function KeymanCard({ k }: { k: Keyman }) {
   );
 }
 
-/* ── API helper ── */
-async function updateCompany(name: string, updates: Record<string, unknown>) {
-  const res = await fetch("/api/update-company", {
+/* ── Local storage helpers ── */
+function getLocalFlags(): Record<string, Record<string, unknown>> {
+  if (typeof window === "undefined") return {};
+  try { return JSON.parse(localStorage.getItem("panalyt-flags") || "{}"); } catch { return {}; }
+}
+function saveLocalFlags(flags: Record<string, Record<string, unknown>>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("panalyt-flags", JSON.stringify(flags));
+}
+function applyLocalFlags(companies: Company[]): Company[] {
+  const flags = getLocalFlags();
+  return companies.map(c => {
+    const f = flags[c.name];
+    return f ? { ...c, ...f } as Company : c;
+  });
+}
+
+/* ── API helper (background, fire-and-forget) ── */
+function updateCompanyBackground(name: string, updates: Record<string, unknown>) {
+  fetch("/api/update-company", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ companyName: name, updates }),
-  });
-  return res.ok;
+  }).catch(() => {});
 }
 
 /* ── Detail Sheet ── */
 function DetailSheet({ company: c, onClose, onUpdate }: { company: Company; onClose: () => void; onUpdate: (name: string, updates: Partial<Company>) => void }) {
-  const [saving, setSaving] = useState(false);
   const [memo, setMemo] = useState(c.memo || "");
   const [memoSaved, setMemoSaved] = useState(true);
 
@@ -134,19 +149,25 @@ function DetailSheet({ company: c, onClose, onUpdate }: { company: Company; onCl
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
-  const toggleFlag = async (field: string, value: unknown) => {
-    setSaving(true);
+  const toggleFlag = (field: string, value: unknown) => {
     const updates = { [field]: value };
-    const ok = await updateCompany(c.name, updates);
-    if (ok) onUpdate(c.name, updates as Partial<Company>);
-    setSaving(false);
+    // Immediate UI update
+    onUpdate(c.name, updates as Partial<Company>);
+    // Save to localStorage
+    const flags = getLocalFlags();
+    flags[c.name] = { ...(flags[c.name] || {}), ...updates };
+    saveLocalFlags(flags);
+    // Background API save
+    updateCompanyBackground(c.name, updates);
   };
 
-  const saveMemo = async () => {
-    setSaving(true);
-    const ok = await updateCompany(c.name, { memo });
-    if (ok) { onUpdate(c.name, { memo }); setMemoSaved(true); }
-    setSaving(false);
+  const saveMemo = () => {
+    onUpdate(c.name, { memo });
+    const flags = getLocalFlags();
+    flags[c.name] = { ...(flags[c.name] || {}), memo };
+    saveLocalFlags(flags);
+    updateCompanyBackground(c.name, { memo });
+    setMemoSaved(true);
   };
 
   return (
@@ -169,25 +190,24 @@ function DetailSheet({ company: c, onClose, onUpdate }: { company: Company; onCl
 
         {/* Flags & Memo bar */}
         <div className="flags-bar">
-          <button className={`flag-btn ${c.starred ? "on" : ""}`} onClick={() => toggleFlag("starred", !c.starred)} disabled={saving} title="スター">
+          <button className={`flag-btn ${c.starred ? "on" : ""}`} onClick={() => toggleFlag("starred", !c.starred)} title="スター">
             {c.starred ? "★" : "☆"}
           </button>
-          <button className={`flag-btn flag-midemi ${c.midemi ? "on" : ""}`} onClick={() => toggleFlag("midemi", !c.midemi)} disabled={saving} title="見込み">
+          <button className={`flag-btn flag-midemi ${c.midemi ? "on" : ""}`} onClick={() => toggleFlag("midemi", !c.midemi)} title="見込み">
             見込み
           </button>
-          <button className={`flag-btn flag-nurturing ${c.status === "nurturing" ? "on" : ""}`} onClick={() => toggleFlag("status", c.status === "nurturing" ? "" : "nurturing")} disabled={saving} title="ナーチャリング">
+          <button className={`flag-btn flag-nurturing ${c.status === "nurturing" ? "on" : ""}`} onClick={() => toggleFlag("status", c.status === "nurturing" ? "" : "nurturing")} title="ナーチャリング">
             ナーチャリング
           </button>
-          <button className={`flag-btn flag-rejected ${c.status === "rejected" ? "on" : ""}`} onClick={() => toggleFlag("status", c.status === "rejected" ? "" : "rejected")} disabled={saving} title="断り">
+          <button className={`flag-btn flag-rejected ${c.status === "rejected" ? "on" : ""}`} onClick={() => toggleFlag("status", c.status === "rejected" ? "" : "rejected")} title="断り">
             断り
           </button>
-          {saving && <span className="flag-saving">保存中...</span>}
-        </div>
+                  </div>
 
         {/* Memo */}
         <div className="memo-section">
           <textarea className="memo-input" placeholder="メモを入力..." value={memo} onChange={e => { setMemo(e.target.value); setMemoSaved(false); }} rows={3} />
-          <button className="memo-save" onClick={saveMemo} disabled={saving || memoSaved}>
+          <button className="memo-save" onClick={saveMemo} disabled={memoSaved}>
             {memoSaved ? "保存済み" : "メモを保存"}
           </button>
         </div>
@@ -324,7 +344,7 @@ export default function Home() {
   const [selected, setSelected] = useState<Company | null>(null);
 
   useEffect(() => {
-    fetch("/research_data.json").then(r => r.json()).then((d: Company[]) => setCompanies(d)).catch(() => setCompanies([]));
+    fetch("/research_data.json").then(r => r.json()).then((d: Company[]) => setCompanies(applyLocalFlags(d))).catch(() => setCompanies([]));
   }, []);
 
   const filtered = useMemo(() => {
