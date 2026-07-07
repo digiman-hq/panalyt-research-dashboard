@@ -185,6 +185,9 @@ body { min-height: 100dvh; }
 .tag-tier-B { background: var(--blue); color: #fff; }
 .tag-tier-C { background: var(--muted); color: #fff; }
 .tag-midemi { background: var(--amber); color: #78350f; }
+.tag-nurturing { background: var(--accent-l); color: var(--accent-d); }
+.tag-rejected { background: var(--red-l); color: #991b1b; }
+.card-star { color: var(--amber); font-size: 1rem; }
 
 /* Chips */
 .chips {
@@ -811,6 +814,74 @@ body { min-height: 100dvh; }
   border-left: 4px solid var(--blue);
 }
 .why-now h3 { color: #2b50c8; }
+
+/* ══ FLAGS BAR ══ */
+.flags-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.flag-btn {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 980px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: var(--sans);
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--muted);
+}
+.flag-btn:hover { border-color: var(--ink); color: var(--ink); }
+.flag-btn.on { color: #fff; border-color: transparent; }
+.flag-btn:first-child { font-size: 1.2rem; padding: 4px 10px; }
+.flag-btn:first-child.on { background: transparent; color: var(--amber); border-color: var(--line); }
+.flag-midemi.on { background: var(--amber); }
+.flag-nurturing.on { background: var(--accent); }
+.flag-rejected.on { background: var(--red); }
+.flag-saving { font-size: 0.75rem; color: var(--muted); }
+
+/* ══ MEMO ══ */
+.memo-section {
+  margin-bottom: 22px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.memo-input {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.88rem;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--paper);
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+  line-height: 1.6;
+}
+.memo-input:focus { border-color: var(--accent); }
+.memo-input::placeholder { color: #a1a1a6; }
+.memo-save {
+  border: none;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 980px;
+  padding: 10px 18px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: var(--sans);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.memo-save:hover { background: #000; }
+.memo-save:disabled { background: var(--line); color: var(--muted); cursor: default; }
 
 /* ── Responsive ── */
 @media (max-width: 600px) {

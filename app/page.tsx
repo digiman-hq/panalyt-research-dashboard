@@ -108,8 +108,22 @@ function KeymanCard({ k }: { k: Keyman }) {
   );
 }
 
+/* ── API helper ── */
+async function updateCompany(name: string, updates: Record<string, unknown>) {
+  const res = await fetch("/api/update-company", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ companyName: name, updates }),
+  });
+  return res.ok;
+}
+
 /* ── Detail Sheet ── */
-function DetailSheet({ company: c, onClose }: { company: Company; onClose: () => void }) {
+function DetailSheet({ company: c, onClose, onUpdate }: { company: Company; onClose: () => void; onUpdate: (name: string, updates: Partial<Company>) => void }) {
+  const [saving, setSaving] = useState(false);
+  const [memo, setMemo] = useState(c.memo || "");
+  const [memoSaved, setMemoSaved] = useState(true);
+
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
@@ -119,6 +133,21 @@ function DetailSheet({ company: c, onClose }: { company: Company; onClose: () =>
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
+
+  const toggleFlag = async (field: string, value: unknown) => {
+    setSaving(true);
+    const updates = { [field]: value };
+    const ok = await updateCompany(c.name, updates);
+    if (ok) onUpdate(c.name, updates as Partial<Company>);
+    setSaving(false);
+  };
+
+  const saveMemo = async () => {
+    setSaving(true);
+    const ok = await updateCompany(c.name, { memo });
+    if (ok) { onUpdate(c.name, { memo }); setMemoSaved(true); }
+    setSaving(false);
+  };
 
   return (
     <div className="sheet">
@@ -137,6 +166,31 @@ function DetailSheet({ company: c, onClose }: { company: Company; onClose: () =>
 
       <div className="detail">
         {c.researched_at && <div className="researched-at">調査日: {c.researched_at}</div>}
+
+        {/* Flags & Memo bar */}
+        <div className="flags-bar">
+          <button className={`flag-btn ${c.starred ? "on" : ""}`} onClick={() => toggleFlag("starred", !c.starred)} disabled={saving} title="スター">
+            {c.starred ? "★" : "☆"}
+          </button>
+          <button className={`flag-btn flag-midemi ${c.midemi ? "on" : ""}`} onClick={() => toggleFlag("midemi", !c.midemi)} disabled={saving} title="見込み">
+            見込み
+          </button>
+          <button className={`flag-btn flag-nurturing ${c.status === "nurturing" ? "on" : ""}`} onClick={() => toggleFlag("status", c.status === "nurturing" ? "" : "nurturing")} disabled={saving} title="ナーチャリング">
+            ナーチャリング
+          </button>
+          <button className={`flag-btn flag-rejected ${c.status === "rejected" ? "on" : ""}`} onClick={() => toggleFlag("status", c.status === "rejected" ? "" : "rejected")} disabled={saving} title="断り">
+            断り
+          </button>
+          {saving && <span className="flag-saving">保存中...</span>}
+        </div>
+
+        {/* Memo */}
+        <div className="memo-section">
+          <textarea className="memo-input" placeholder="メモを入力..." value={memo} onChange={e => { setMemo(e.target.value); setMemoSaved(false); }} rows={3} />
+          <button className="memo-save" onClick={saveMemo} disabled={saving || memoSaved}>
+            {memoSaved ? "保存済み" : "メモを保存"}
+          </button>
+        </div>
 
         {/* Stats */}
         <div className="stat-row">
@@ -266,7 +320,7 @@ function DetailSheet({ company: c, onClose }: { company: Company; onClose: () =>
 export default function Home() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "midemi">("all");
+  const [filter, setFilter] = useState<"all" | "midemi" | "starred" | "nurturing" | "rejected">("all");
   const [selected, setSelected] = useState<Company | null>(null);
 
   useEffect(() => {
@@ -276,6 +330,9 @@ export default function Home() {
   const filtered = useMemo(() => {
     let list = companies;
     if (filter === "midemi") list = list.filter(c => c.midemi);
+    if (filter === "starred") list = list.filter(c => c.starred);
+    if (filter === "nurturing") list = list.filter(c => c.status === "nurturing");
+    if (filter === "rejected") list = list.filter(c => c.status === "rejected");
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(c => c.name.toLowerCase().includes(q) || (c.name_formal && c.name_formal.toLowerCase().includes(q)) || c.industry.toLowerCase().includes(q) || c.location.toLowerCase().includes(q));
@@ -314,7 +371,10 @@ export default function Home() {
         </div>
         <div className="seg-ctrl">
           <button className={`seg-btn ${filter === "all" ? "active" : ""}`} onClick={() => setFilter("all")}>すべて</button>
-          <button className={`seg-btn ${filter === "midemi" ? "active" : ""}`} onClick={() => setFilter("midemi")}>見込みのみ</button>
+          <button className={`seg-btn ${filter === "starred" ? "active" : ""}`} onClick={() => setFilter("starred")}>★</button>
+          <button className={`seg-btn ${filter === "midemi" ? "active" : ""}`} onClick={() => setFilter("midemi")}>見込み</button>
+          <button className={`seg-btn ${filter === "nurturing" ? "active" : ""}`} onClick={() => setFilter("nurturing")}>ナーチャリング</button>
+          <button className={`seg-btn ${filter === "rejected" ? "active" : ""}`} onClick={() => setFilter("rejected")}>断り</button>
         </div>
       </div>
 
@@ -326,7 +386,10 @@ export default function Home() {
             <div className="card-body">
               <div className="card-top">
                 <span className={tierTag(c.tier)}>{c.tier}</span>
+                {c.starred && <span className="card-star">★</span>}
                 {c.midemi && <span className="tag tag-midemi">見込み</span>}
+                {c.status === "nurturing" && <span className="tag tag-nurturing">ナーチャリング</span>}
+                {c.status === "rejected" && <span className="tag tag-rejected">断り</span>}
               </div>
               <div className="card-name">{c.name}</div>
               <div className="card-meta"><span>{c.industry}</span><span>·</span><span>{c.location}</span></div>
@@ -348,7 +411,10 @@ export default function Home() {
         ))}
       </div>
 
-      {selected && <DetailSheet company={selected} onClose={handleClose} />}
+      {selected && <DetailSheet company={selected} onClose={handleClose} onUpdate={(name, updates) => {
+        setCompanies(prev => prev.map(co => co.name === name ? { ...co, ...updates } : co));
+        setSelected(prev => prev && prev.name === name ? { ...prev, ...updates } : prev);
+      }} />}
     </div>
   );
 }

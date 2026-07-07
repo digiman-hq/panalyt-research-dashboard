@@ -58,5 +58,8 @@ export interface Company {
   researched_at: string;
   saiden: string;
   midemi: boolean;
+  starred: boolean;
+  status: "" | "nurturing" | "rejected";
+  memo: string;
   batch_status: string;
 }
