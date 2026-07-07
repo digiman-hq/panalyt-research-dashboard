@@ -92,6 +92,22 @@ body { min-height: 100dvh; }
   background: transparent; color: var(--ink);
 }
 .search-input::placeholder { color: #a1a1a6; }
+.search-clear {
+  flex-shrink: 0;
+  border: none;
+  background: var(--muted);
+  color: #fff;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 0.65rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.search-clear:hover { background: var(--ink); }
 .seg-ctrl {
   display: inline-flex;
   background: #e8e8ed;
