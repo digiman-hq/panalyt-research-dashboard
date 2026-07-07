@@ -278,7 +278,7 @@ export default function Home() {
     if (filter === "midemi") list = list.filter(c => c.midemi);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      list = list.filter(c => c.name.toLowerCase().includes(q) || c.industry.toLowerCase().includes(q) || c.location.toLowerCase().includes(q));
+      list = list.filter(c => c.name.toLowerCase().includes(q) || (c.name_formal && c.name_formal.toLowerCase().includes(q)) || c.industry.toLowerCase().includes(q) || c.location.toLowerCase().includes(q));
     }
     return list;
   }, [companies, search, filter]);

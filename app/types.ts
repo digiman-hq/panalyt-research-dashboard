@@ -37,6 +37,7 @@ export interface Challenge {
 
 export interface Company {
   name: string;
+  name_formal: string;
   tier: string;
   industry: string;
   location: string;
